@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>프레임 대기열 시뮬레이터</title>
+  <meta name="description" content="촬영 · 처리 · 그리기 · 저장 단계의 처리 시간과 작업자 수 · 큐 크기 · 넘칠 때 정책으로, 장비에 올리기 전에 대기열 · 지연 · 버린 프레임 · 메모리 한도 도달 시각을 계산합니다. 서버 없이 브라우저에서 동작합니다.">
+  <meta name="theme-color" content="#c00000">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="vendor/pretendard/pretendard.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">본문으로 건너뛰기</a>
+  <header class="bar">
+    <div class="bar-in">
+      <strong class="app-name"><img src="icons/icon.svg" alt="" width="26" height="26"> <span data-i18n="appName">프레임 대기열 시뮬레이터</span></strong>
+      <label class="sr-only" for="lang" data-i18n="language">언어</label>
+      <select id="lang" class="sel sm"><option value="ko">한국어</option><option value="en">English</option></select>
+      <button class="btn ghost sm icon" type="button" id="theme" data-i18n-attr="aria-label:theme;title:theme" aria-label="화면 테마">◐</button>
+      <button class="btn ghost sm" type="button" id="open-help" data-i18n="help">도움말</button>
+      <button class="btn ghost sm" type="button" id="open-settings" data-i18n="settings">설정</button>
+    </div>
+  </header>
+
+  <main class="page" id="main">
+    <section class="intro">
+      <h1 data-i18n="heroTitle">이 설정이면 대기열이 쌓이는가, 몇 시간 뒤 메모리가 넘치는가</h1>
+      <p data-i18n-html="heroText"></p>
+      <ol class="steps-nav">
+        <li><span>1</span><i data-i18n="step1">데이터 고르기</i></li>
+        <li><span>2</span><i data-i18n="step2">단계 · 장비 설정</i></li>
+        <li><span>3</span><i data-i18n="step3">대기열 · 지연 · 메모리</i></li>
+        <li><span>4</span><i data-i18n="step4">현장 검증 (재현 → 비교 → Shadow → 전환)</i></li>
+      </ol>
+    </section>
+
+    <section class="panel source" id="drop" aria-labelledby="src-h">
+      <div class="panel-head"><h2 id="src-h"><span data-i18n="sourceTitle">1. 데이터</span> <small data-i18n="sourceHint">합성 시나리오를 고르거나 내 타이밍 로그(CSV)를 엽니다</small></h2></div>
+      <div class="src-row">
+        <div class="src-tabs" id="scenario-btns" role="group" data-i18n-attr="aria-label:sourceTitle"></div>
+        <div class="src-tabs">
+          <label class="file-btn"><span data-i18n="openLog">내 타이밍 로그 열기</span><input type="file" id="file" accept=".csv,.tsv,.txt,.log,text/csv,text/plain" class="sr-only"></label>
+          <button type="button" id="open-sample-log" data-i18n="openSampleLog">예시 로그 (합성)</button>
+          <button type="button" class="link" id="download-sample" data-i18n="downloadSample">예시 로그 내려받기</button>
+        </div>
+      </div>
+      <p class="drop-hint" data-i18n="dropHint">CSV 파일을 이 페이지에 끌어다 놓아도 됩니다</p>
+
+      <details class="format" id="read-opts">
+        <summary data-i18n="readOpts">로그 읽기 설정 (열 · 단위 · 인코딩)</summary>
+        <div class="opt-grid">
+          <label class="field"><span data-i18n="optDelim">구분자</span><select id="o-delim"><option value="auto" data-i18n="auto">자동</option><option value=",">,</option><option value="&#9;">Tab</option><option value=";">;</option><option value="|">|</option></select></label>
+          <label class="field"><span data-i18n="optHeader">첫 줄</span><select id="o-header"><option value="auto" data-i18n="auto">자동</option><option value="yes" data-i18n="headerYes">머리글</option><option value="no" data-i18n="headerNo">자료</option></select></label>
+          <label class="field"><span data-i18n="optEnc">인코딩</span><select id="o-enc"><option value="auto" data-i18n="encAuto">자동 (UTF-8 → EUC-KR)</option><option value="utf-8">UTF-8</option><option value="euc-kr">EUC-KR (CP949)</option></select></label>
+          <label class="field"><span data-i18n="optTime">촬영 시각 열</span><input id="o-time" spellcheck="false" placeholder="grab_time / 2 / none"></label>
+          <label class="field"><span data-i18n="optTimeUnit">시각 단위</span><select id="o-tunit"><option value="auto" data-i18n="auto">자동</option><option value="ms">ms</option><option value="s" data-i18n="unitS">초</option><option value="us">µs</option><option value="datetime" data-i18n="unitDt">날짜 시각</option></select></label>
+          <label class="field"><span data-i18n="optDurUnit">처리 시간 단위</span><select id="o-dunit"><option value="ms">ms</option><option value="s" data-i18n="unitS">초</option><option value="us">µs</option></select></label>
+          <label class="field wide"><span data-i18n="optCols">처리 시간 열 (쉼표로, 끝-시작은 a-b)</span><input id="o-cols" spellcheck="false" placeholder="proc_end-proc_start, draw_ms, save_ms"></label>
+          <small class="wide" data-i18n="colsHint">비우면 머리글로 찾습니다: 시각 열(time · timestamp · grab_time …), 번호 열(frame · id)은 빼고, X_start · X_end 쌍은 끝 - 시작으로 바꿉니다. 번호는 1부터.</small>
+        </div>
+        <div class="row"><p class="hint" data-i18n-html="formatEx"></p>
+          <button class="btn sm" type="button" id="reread" data-i18n="reread">이 설정으로 다시 읽기</button></div>
+      </details>
+
+      <div id="parse-progress" class="progress" hidden><div class="bar-track"><span class="indet"></span></div><span data-i18n="reading">읽는 중…</span></div>
+      <div id="log-info" aria-live="polite"></div>
+      <details id="bad" class="bad" hidden><summary id="bad-sum"></summary><div id="bad-body"></div></details>
+      <div id="fit-box" hidden></div>
+    </section>
+
+    <section class="panel" id="config" aria-labelledby="cfg-h">
+      <div class="panel-head">
+        <h2 id="cfg-h"><span data-i18n="configTitle">2. 단계 · 장비 설정</span> <small data-i18n="configHint">회색 칸은 작업 데이터, 흰 칸은 장비 설정(초안)입니다</small></h2>
+        <span id="draft-badge" class="badge"></span>
+      </div>
+      <div class="cfg-grid">
+        <fieldset class="box"><legend data-i18n="camTitle">촬영 (카메라)</legend>
+          <label class="field"><span data-i18n="camMode">도착 방식</span>
+            <select id="c-mode">
+              <option value="fixed" data-i18n="camFixed">고정 fps</option>
+              <option value="jitter" data-i18n="camJitter">고정 fps + 흔들림</option>
+              <option value="poisson" data-i18n="camPoisson">무작위 (포아송)</option>
+              <option value="burst" data-i18n="camBurst">버스트 (슬롯 촬영)</option>
+              <option value="log" data-i18n="camLog">로그의 촬영 시각</option>
+            </select></label>
+          <label class="field" data-cam="fixed jitter poisson"><span>fps</span><input id="c-fps" type="number" min="0.1" step="any"></label>
+          <label class="field" data-cam="jitter"><span data-i18n="camJitterMs">흔들림 σ (ms)</span><input id="c-jit" type="number" min="0" step="any"></label>
+          <label class="field" data-cam="burst"><span data-i18n="camBurstN">버스트 한 번에 (장)</span><input id="c-bn" type="number" min="1" step="1"></label>
+          <label class="field" data-cam="burst"><span data-i18n="camBurstFps">버스트 중 fps</span><input id="c-bfps" type="number" min="0.1" step="any"></label>
+          <label class="field" data-cam="burst"><span data-i18n="camGap">버스트 사이 쉬는 시간 (ms)</span><input id="c-gap" type="number" min="0" step="any"></label>
+          <p class="hint" id="cam-sum"></p>
+        </fieldset>
+        <fieldset class="box"><legend data-i18n="memTitle">메모리</legend>
+          <label class="field"><span data-i18n="frameMB">프레임 1장 (MB)</span><input id="m-frame" type="number" min="0" step="any"></label>
+          <label class="field"><span data-i18n="baseMB">프로그램 기본 사용량 (MB)</span><input id="m-base" type="number" min="0" step="any"></label>
+          <label class="field set"><span data-i18n="limitGB">메모리 한도 (GB, 장비 설정)</span><input id="m-limit" type="number" min="0" step="any"></label>
+          <p class="hint" data-i18n="memHint">대기열 · 처리 중인 프레임 수 × 프레임 크기 + 기본 사용량. 한도 0 은 확인하지 않음.</p>
+        </fieldset>
+        <fieldset class="box"><legend data-i18n="runTitle">계산</legend>
+          <label class="field"><span data-i18n="duration">운영 시간 (분)</span><input id="r-dur" type="number" min="0.1" step="any"></label>
+          <label class="field"><span data-i18n="seed">시드 (같은 값이면 같은 결과)</span><input id="r-seed" type="number" min="1" step="1"></label>
+          <p class="hint" id="run-sum"></p>
+        </fieldset>
+      </div>
+
+      <div class="tbl-wrap stage-wrap">
+        <table class="tbl stages" id="stage-table">
+          <caption class="sr-only" data-i18n="stagesCap">단계 목록</caption>
+          <thead>
+            <tr class="grp"><th colspan="5" class="g-data" data-i18n="grpData">작업 데이터</th><th colspan="3" class="g-set" data-i18n="grpSet">장비 설정 (초안)</th><th></th></tr>
+            <tr>
+              <th scope="col" data-i18n="thStage">단계</th><th scope="col" data-i18n="thFrom">입력</th><th scope="col" data-i18n="thDist">처리 시간</th>
+              <th scope="col" data-i18n="thParams">평균 · σ (ms)</th><th scope="col" data-i18n="thKeep">버리면 안 됨</th>
+              <th scope="col" data-i18n="thWorkers">작업자</th><th scope="col" data-i18n="thCap">큐 크기</th><th scope="col" data-i18n="thPolicy">넘칠 때</th><th><span class="sr-only" data-i18n="thActions">작업</span></th>
+            </tr>
+          </thead>
+          <tbody id="stage-body"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button class="btn ghost sm" type="button" id="add-stage" data-i18n="addStage">+ 단계 추가</button>
+        <button class="btn ghost sm" type="button" id="load-active" data-i18n="loadActive">장비 설정 불러오기</button>
+        <span class="grow"></span>
+        <button class="btn ghost sm" type="button" id="save-workload" data-i18n="saveWorkload">재현 세트에 저장</button>
+      </div>
+      <ul id="pre-notes" class="notes" aria-live="polite"></ul>
+      <p id="cfg-err" class="msg err" role="alert"></p>
+      <div class="run-row">
+        <button class="btn big" type="button" id="run"><span data-i18n="run">실행</span> <kbd>Ctrl+Enter</kbd></button>
+        <div id="progress" class="progress" hidden><div class="bar-track"><span id="progress-bar"></span></div><span id="progress-text" aria-live="polite"></span><button class="btn ghost sm" type="button" id="cancel" data-i18n="cancel">취소</button></div>
+        <span id="stale" class="hint" hidden data-i18n="stale">설정이 바뀌었습니다. 실행을 누르면 다시 계산합니다.</span>
+      </div>
+    </section>
+
+    <section class="panel" id="results" aria-labelledby="res-h">
+      <div class="panel-head">
+        <h2 id="res-h"><span data-i18n="resultsTitle">3. 결과</span> <small id="res-meta"></small></h2>
+        <div class="row export-row" id="export-row" hidden>
+          <span class="hint" data-i18n="exportLabel">내보내기</span>
+          <button class="btn ghost sm" type="button" id="exp-html" data-i18n="expHtml">HTML 보고서</button>
+          <button class="btn ghost sm" type="button" id="exp-csv">CSV</button>
+          <button class="btn ghost sm" type="button" id="exp-json">JSON</button>
+        </div>
+      </div>
+      <div id="verdict" class="verdict"></div>
+      <div class="tbl-wrap"><table class="tbl" id="res-table"></table></div>
+      <div class="charts">
+        <figure class="chart">
+          <figcaption><b data-i18n="chQueue">대기열 길이</b> <small data-i18n="chQueueHint">구간마다 최대, 기다리는 프레임 수</small>
+            <button class="btn ghost xs" type="button" data-table="q" aria-pressed="false" data-i18n="asTable">표로 보기</button></figcaption>
+          <canvas id="ch-q" role="img"></canvas><div class="legend" id="lg-q"></div><div class="tbl-wrap" id="tb-q" hidden></div>
+        </figure>
+        <figure class="chart">
+          <figcaption><b data-i18n="chMem">메모리</b> <small data-i18n="chMemHint">구간마다 최대, 점선은 한도</small>
+            <button class="btn ghost xs" type="button" data-table="mem" aria-pressed="false" data-i18n="asTable">표로 보기</button></figcaption>
+          <canvas id="ch-mem" role="img"></canvas><div class="tbl-wrap" id="tb-mem" hidden></div>
+        </figure>
+        <figure class="chart">
+          <figcaption><b data-i18n="chLat">지연 분포</b> <small data-i18n="chLatHint">촬영부터 이 단계가 끝날 때까지</small>
+            <label class="sr-only" for="lat-stage" data-i18n="thStage">단계</label><select id="lat-stage" class="sel xs"></select>
+            <button class="btn ghost xs" type="button" data-table="lat" aria-pressed="false" data-i18n="asTable">표로 보기</button></figcaption>
+          <canvas id="ch-lat" role="img"></canvas><div class="tbl-wrap" id="tb-lat" hidden></div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="panel verify" id="verify" aria-labelledby="vf-h">
+      <div class="panel-head">
+        <h2 id="vf-h"><span data-i18n="verifyTitle">4. 현장 검증 절차</span> <small data-i18n="verifyHint">바꾸기 전에 같은 데이터로 확인하고, 새 설정은 옆에서 먼저 돌려 보고, 언제든 되돌립니다</small></h2>
+        <span id="mode-badge" class="badge"></span>
+      </div>
+      <div class="vtabs" role="tablist" aria-labelledby="vf-h">
+        <button role="tab" type="button" id="vt-repro" aria-controls="vp-repro" aria-selected="true"><span>1</span><i data-i18n="vtRepro">재현</i></button>
+        <button role="tab" type="button" id="vt-compare" aria-controls="vp-compare" aria-selected="false" tabindex="-1"><span>2</span><i data-i18n="vtCompare">비교</i></button>
+        <button role="tab" type="button" id="vt-shadow" aria-controls="vp-shadow" aria-selected="false" tabindex="-1"><span>3</span><i>Shadow</i></button>
+        <button role="tab" type="button" id="vt-switch" aria-controls="vp-switch" aria-selected="false" tabindex="-1"><span>4</span><i data-i18n="vtSwitch">전환 · 롤백</i></button>
+      </div>
+      <div role="tabpanel" id="vp-repro" aria-labelledby="vt-repro" class="vpanel"></div>
+      <div role="tabpanel" id="vp-compare" aria-labelledby="vt-compare" class="vpanel" hidden></div>
+      <div role="tabpanel" id="vp-shadow" aria-labelledby="vt-shadow" class="vpanel" hidden></div>
+      <div role="tabpanel" id="vp-switch" aria-labelledby="vt-switch" class="vpanel" hidden></div>
+    </section>
+  </main>
+
+  <footer class="foot"><span data-i18n="footer">합성 시나리오 · 예시 로그의 수치는 설명용으로 만든 값입니다 (특정 장비 측정값 아님). 데이터는 이 기기에만 저장됩니다.</span> <span id="version"></span></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="settings" aria-labelledby="st-h">
+    <form method="dialog" class="dlg">
+      <h2 id="st-h" data-i18n="settings">설정</h2>
+      <fieldset><legend data-i18n="dataSection">데이터</legend>
+        <div class="row">
+          <button class="btn ghost sm" type="button" id="backup-export" data-i18n="backupExport">백업 내보내기 (JSON)</button>
+          <label class="btn ghost sm file-like"><span data-i18n="backupImport">백업 가져오기</span><input type="file" id="backup-import" accept=".json,application/json" class="sr-only"></label>
+          <button class="btn ghost sm" type="button" id="errors-export" data-i18n="errorsExport">오류 기록 내보내기</button>
+          <button class="btn ghost sm danger" type="button" id="reset-all" data-i18n="resetAll">이 기기의 데이터 모두 지우기</button>
+        </div>
+        <small data-i18n="dataHint">저장 위치: 이 브라우저의 IndexedDB (작업 데이터 · 재현 세트 · 장비 설정 이력 · Shadow 기록 · 읽은 로그). 서버로 보내지 않습니다.</small>
+      </fieldset>
+      <p id="settings-msg" class="msg" role="status"></p>
+      <div class="row end"><button class="btn" value="close" type="submit" data-i18n="close">닫기</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="help" aria-labelledby="hp-h" class="wide-dlg">
+    <form method="dialog" class="dlg">
+      <h2 id="hp-h" data-i18n="help">도움말</h2>
+      <div id="help-body" class="help"></div>
+      <div class="row end"><button class="btn" value="close" type="submit" data-i18n="close">닫기</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="onboard" aria-labelledby="ob-h">
+    <form method="dialog" class="dlg">
+      <h2 id="ob-h" data-i18n="obTitle">처음 오셨나요?</h2>
+      <ol class="ob">
+        <li data-i18n-html="ob1"></li>
+        <li data-i18n-html="ob2"></li>
+        <li data-i18n-html="ob3"></li>
+      </ol>
+      <p class="hint" data-i18n="obPrivacy">로그는 이 브라우저 안에서만 읽고 이 기기에만 저장합니다. 서버 · 외부 서비스로 보내는 것은 없습니다.</p>
+      <div class="row end"><button class="btn" value="ok" type="submit" data-i18n="obStart">시작하기</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

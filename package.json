@@ -1,0 +1,12 @@
+{
+  "name": "frame-backlog-sim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frame backlog simulator for inspection-tool vision pipelines: queue, latency p50/p95/p99, dropped frames and time to memory limit, in the browser.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "bench": "node tools/bench.mjs"
+  }
+}

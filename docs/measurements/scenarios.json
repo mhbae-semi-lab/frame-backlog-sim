@@ -1,0 +1,326 @@
+{
+ "node": "24.18.0",
+ "settings": {
+  "v1": {
+   "limitMB": 16384,
+   "stages": {
+    "proc": {
+     "workers": 1,
+     "cap": 24,
+     "policy": "dropNew"
+    },
+    "draw": {
+     "workers": 1,
+     "cap": 8,
+     "policy": "all"
+    },
+    "save": {
+     "workers": 1,
+     "cap": 8,
+     "policy": "all"
+    }
+   }
+  },
+  "fixed": {
+   "limitMB": 16384,
+   "stages": {
+    "proc": {
+     "workers": 1,
+     "cap": 64,
+     "policy": "dropNew"
+    },
+    "draw": {
+     "workers": 1,
+     "cap": 8,
+     "policy": "latest"
+    },
+    "save": {
+     "workers": 2,
+     "cap": 8,
+     "policy": "all"
+    }
+   }
+  }
+ },
+ "rows": [
+  {
+   "id": "s-slow-draw",
+   "frames": 54000,
+   "ms": 245,
+   "need": [
+    {
+     "maxQ": 1,
+     "grows": false
+    },
+    {
+     "maxQ": 4068,
+     "grows": true
+    },
+    {
+     "maxQ": 0,
+     "grows": false
+    }
+   ],
+   "v1": {
+    "pass": false,
+    "fails": [
+     "memory",
+     "p99"
+    ],
+    "keepLoss": 0,
+    "dispDrop": 0,
+    "dispP99": 134001.484375,
+    "memPeakMB": 18776,
+    "memHit": {
+     "kind": "sim",
+     "ms": 1546266.6666666667
+    },
+    "rho": [
+     0.66,
+     1.081,
+     0.719
+    ],
+    "stages": [
+     {
+      "name": "proc",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 32.9
+     },
+     {
+      "name": "draw",
+      "dropped": 0,
+      "maxQ": 4068,
+      "p99": 134001.5
+     },
+     {
+      "name": "save",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 63.8
+     }
+    ]
+   },
+   "fixed": {
+    "pass": true,
+    "fails": [],
+    "keepLoss": 0,
+    "dispDrop": 5695,
+    "dispP99": 88.24402618408203,
+    "memPeakMB": 2512,
+    "memHit": null,
+    "rho": [
+     0.66,
+     1.081,
+     0.36
+    ],
+    "stages": [
+     {
+      "name": "proc",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 32.9
+     },
+     {
+      "name": "draw",
+      "dropped": 5695,
+      "maxQ": 1,
+      "p99": 88.2
+     },
+     {
+      "name": "save",
+      "dropped": 0,
+      "maxQ": 0,
+      "p99": 63
+     }
+    ]
+   }
+  },
+  {
+   "id": "s-burst",
+   "frames": 25740,
+   "ms": 91,
+   "need": [
+    {
+     "maxQ": 50,
+     "grows": false
+    },
+    {
+     "maxQ": 9139,
+     "grows": true
+    },
+    {
+     "maxQ": 1,
+     "grows": false
+    }
+   ],
+   "v1": {
+    "pass": false,
+    "fails": [
+     "keepLoss",
+     "memory",
+     "p99"
+    ],
+    "keepLoss": 5213,
+    "dispDrop": 0,
+    "dispP99": 211046.046875,
+    "memPeakMB": 39060,
+    "memHit": {
+     "kind": "sim",
+     "ms": 224558.33333333334
+    },
+    "rho": [
+     0.642,
+     1.55,
+     0.411
+    ],
+    "stages": [
+     {
+      "name": "proc",
+      "dropped": 5213,
+      "maxQ": 24,
+      "p99": 405.4
+     },
+     {
+      "name": "draw",
+      "dropped": 0,
+      "maxQ": 9139,
+      "p99": 211046
+     },
+     {
+      "name": "save",
+      "dropped": 0,
+      "maxQ": 3,
+      "p99": 419.7
+     }
+    ]
+   },
+   "fixed": {
+    "pass": true,
+    "fails": [],
+    "keepLoss": 0,
+    "dispDrop": 19472,
+    "dispP99": 80.40431213378906,
+    "memPeakMB": 2704,
+    "memHit": null,
+    "rho": [
+     0.641,
+     1.552,
+     0.257
+    ],
+    "stages": [
+     {
+      "name": "proc",
+      "dropped": 0,
+      "maxQ": 50,
+      "p99": 698.1
+     },
+     {
+      "name": "draw",
+      "dropped": 19472,
+      "maxQ": 1,
+      "p99": 80.4
+     },
+     {
+      "name": "save",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 710.1
+     }
+    ]
+   }
+  },
+  {
+   "id": "s-mem-creep",
+   "frames": 864000,
+   "ms": 2579,
+   "need": [
+    {
+     "maxQ": 1,
+     "grows": false
+    },
+    {
+     "maxQ": 4,
+     "grows": false
+    },
+    {
+     "maxQ": 1,
+     "grows": false
+    }
+   ],
+   "v1": {
+    "pass": false,
+    "fails": [
+     "memory"
+    ],
+    "keepLoss": 0,
+    "dispDrop": 0,
+    "dispP99": 78.40969848632812,
+    "memPeakMB": 39796,
+    "memHit": {
+     "kind": "sim",
+     "ms": 10698166.723244514
+    },
+    "rho": [
+     0.6,
+     0.9,
+     1.011
+    ],
+    "stages": [
+     {
+      "name": "proc",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 31.1
+     },
+     {
+      "name": "draw",
+      "dropped": 0,
+      "maxQ": 4,
+      "p99": 78.4
+     },
+     {
+      "name": "save",
+      "dropped": 0,
+      "maxQ": 9322,
+      "p99": 307129.5
+     }
+    ]
+   },
+   "fixed": {
+    "pass": true,
+    "fails": [],
+    "keepLoss": 0,
+    "dispDrop": 5615,
+    "dispP99": 64.33735656738281,
+    "memPeakMB": 2512,
+    "memHit": null,
+    "rho": [
+     0.6,
+     0.9,
+     0.505
+    ],
+    "stages": [
+     {
+      "name": "proc",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 31.1
+     },
+     {
+      "name": "draw",
+      "dropped": 5615,
+      "maxQ": 1,
+      "p99": 64.3
+     },
+     {
+      "name": "save",
+      "dropped": 0,
+      "maxQ": 1,
+      "p99": 72.7
+     }
+    ]
+   }
+  }
+ ]
+}

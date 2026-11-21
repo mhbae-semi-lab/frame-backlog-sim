@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "frame-backlog-sim", "runtimeExecutable": "python", "runtimeArgs": ["-m", "http.server", "8748", "--bind", "127.0.0.1"], "port": 8748 }
+  ]
+}
